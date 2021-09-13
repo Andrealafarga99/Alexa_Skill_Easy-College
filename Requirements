@@ -1,0 +1,6 @@
+boto3==1.9.216
+ask-sdk-core==1.11.0
+ask-sdk-dynamodb-persistence-adapter==1.15.0
+python-Levenshtein-wheels==0.13.2
+beautifulsoup4==4.9.3
+requests==2.26.0
