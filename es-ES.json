@@ -1,0 +1,598 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "asistente virtual",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "CheckCalendarExam",
+          "slots": [
+            {
+              "name": "title",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "Fecha examen {title}",
+            "Fecha del examen de {title}",
+            "Cuando es el examen de {title} ",
+            "Dime la fecha del examen de {title}",
+            "Cuándo es el examen de {title} "
+          ]
+        },
+        {
+          "name": "CheckCalendarAssignment",
+          "slots": [
+            {
+              "name": "title",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "Fecha de la tarea de {title}",
+            "Fecha de la práctica de {title}",
+            "Dime la fecha de la tarea de {title}",
+            "Dime la fecha de entrega de la tarea de {title}",
+            "Dime la fecha de la práctica de {title}",
+            "Dime la fecha de la entrega de {title} ",
+            "Dime la fecha del trabajo de {title}",
+            "Fecha del trabajo de {title}",
+            "Dime la fecha de entrega de la practica de {title}",
+            "Dime la fecha de entrega del trabajo de {title}",
+            "Fecha de la entrega de {title}",
+            "Cuándo es la entrega del trabajo de {title}"
+          ]
+        },
+        {
+          "name": "NextCalendarRecord",
+          "slots": [
+            {
+              "name": "record_type",
+              "type": "recordType"
+            }
+          ],
+          "samples": [
+            "Proximo {record_type}",
+            "Dime cuando es la proxima {record_type}",
+            "Cuándo es la próxima {record_type}",
+            "Cuando es la proxima {record_type}",
+            "Proxima {record_type}",
+            "Próxima {record_type}",
+            "Dime la fecha del proximo {record_type}",
+            "Dime la fecha de la próxima {record_type}",
+            "Próximo {record_type}",
+            "Dime cuándo es el próximo {record_type}",
+            "Cuándo es el próximo {record_type}",
+            "Dime cuando es el proximo {record_type}",
+            "Cuando es el proximo {record_type}"
+          ]
+        },
+        {
+          "name": "InsertCalendarRecord",
+          "slots": [
+            {
+              "name": "record_type",
+              "type": "recordType",
+              "samples": [
+                "{record_type}"
+              ]
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE",
+              "samples": [
+                "El {record_type} será el {date}",
+                "La {record_type} será el {date}",
+                "añádelo para {date}",
+                "añadelo para {date}",
+                "sera el {date}",
+                "será el {date}",
+                "{date}"
+              ]
+            },
+            {
+              "name": "time",
+              "type": "AMAZON.TIME",
+              "samples": [
+                "Será a las {time}",
+                "A las {time}",
+                "{time}"
+              ]
+            },
+            {
+              "name": "title",
+              "type": "AMAZON.SearchQuery",
+              "samples": [
+                "Me gustaria que su título fuese {title}",
+                "El titulo es {title}",
+                "El título es {title}",
+                "Llámalo {title}",
+                "{title}"
+              ]
+            }
+          ],
+          "samples": [
+            "Añadir una {record_type} para {date} a las {time}",
+            "Añadir un {record_type} para {date} a las {time}",
+            "Añadir un {record_type} para {date}",
+            "Añadir una {record_type} para {date}",
+            "Añadir una {record_type}",
+            "Añadir un {record_type}",
+            "Añadir {record_type}",
+            "Añade una {record_type}",
+            "Añade un {record_type}",
+            "Añade un {record_type} para {date}",
+            "Añade una {record_type} para {date}",
+            "Añade una {record_type} para {date} a las {time}",
+            "Añade un {record_type} para el {date} a las {time}"
+          ]
+        },
+        {
+          "name": "DeleteCalendarExamRecord",
+          "slots": [
+            {
+              "name": "title",
+              "type": "AMAZON.SearchQuery",
+              "samples": [
+                "{title}"
+              ]
+            }
+          ],
+          "samples": [
+            "Eliminar el examen de {title}",
+            "Eliminar examen de {title}",
+            "Elimina el examen de {title}"
+          ]
+        },
+        {
+          "name": "CheckCalendarPeriod",
+          "slots": [
+            {
+              "name": "date",
+              "type": "AMAZON.DATE"
+            },
+            {
+              "name": "record_type",
+              "type": "recordType"
+            }
+          ],
+          "samples": [
+            "que {record_type} tengo para {date}",
+            "Que {record_type} tengo {date}",
+            "Que {record_type} tuve {date}",
+            "Dime {record_type} para {date}",
+            "Dime {record_type} tengo para {date}",
+            "DIme que {record_type} tengo para {date}",
+            "Dime los {record_type} de {date}",
+            "Dime que {record_type} tuve {date}",
+            "Dime {record_type} tuve {date}",
+            "Dime {record_type} tengo {date}",
+            "Dime que {record_type} tengo {date}"
+          ]
+        },
+        {
+          "name": "DaysToRecord",
+          "slots": [
+            {
+              "name": "title",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "Cuanto queda para la {title}",
+            "Cuanto queda para el {title}",
+            "Cuantos días quedan para la {title}",
+            "Cuantos días quedan para el {title}"
+          ]
+        },
+        {
+          "name": "SubjectsTimetable",
+          "slots": [
+            {
+              "name": "dayOfWeek",
+              "type": "AMAZON.DayOfWeek"
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE"
+            }
+          ],
+          "samples": [
+            "Dime que horario tengo el {dayOfWeek}",
+            "Dime que horario tengo {date}",
+            "Horario de {date}",
+            "Dime el horario del {date} ",
+            "Dime el horario de {date}",
+            "Dime el horario del {dayOfWeek}",
+            "Horario del {dayOfWeek}"
+          ]
+        },
+        {
+          "name": "GetContactInfoFromWebsite",
+          "slots": [
+            {
+              "name": "name",
+              "type": "AMAZON.FirstName"
+            },
+            {
+              "name": "subject",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "Quien da la asignatura de {subject}",
+            "Cual es el email de {name}",
+            "Dime quien es el profesor de {subject}",
+            "Quien es el profesor de {subject}",
+            "Cuales los datos de contacto de {name}",
+            "Cuales son los datos de contacto de {name}",
+            "Dime los datos del profesor de {subject}",
+            "Cuales son los datos de contacto del profesor de {subject}"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "values": [
+            {
+              "id": "examen",
+              "name": {
+                "value": "examen",
+                "synonyms": [
+                  "exámenes",
+                  "examenes"
+                ]
+              }
+            },
+            {
+              "id": "trabajo",
+              "name": {
+                "value": "trabajo",
+                "synonyms": [
+                  "prácticas",
+                  "tareas",
+                  "entregas",
+                  "trabajos",
+                  "entrega",
+                  "tarea",
+                  "práctica"
+                ]
+              }
+            }
+          ],
+          "name": "recordType"
+        }
+      ]
+    },
+    "dialog": {
+      "intents": [
+        {
+          "name": "CheckCalendarAssignment",
+          "confirmationRequired": false,
+          "prompts": {},
+          "slots": [
+            {
+              "name": "title",
+              "type": "AMAZON.SearchQuery",
+              "elicitationRequired": false,
+              "confirmationRequired": false,
+              "prompts": {}
+            }
+          ]
+        },
+        {
+          "name": "NextCalendarRecord",
+          "confirmationRequired": false,
+          "prompts": {},
+          "slots": [
+            {
+              "name": "record_type",
+              "type": "recordType",
+              "elicitationRequired": false,
+              "confirmationRequired": false,
+              "prompts": {},
+              "validations": [
+                {
+                  "type": "hasEntityResolutionMatch",
+                  "prompt": "Slot.Validation.628314443864.630285625625.838568737178"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "InsertCalendarRecord",
+          "confirmationRequired": false,
+          "prompts": {},
+          "slots": [
+            {
+              "name": "record_type",
+              "type": "recordType",
+              "elicitationRequired": true,
+              "confirmationRequired": false,
+              "prompts": {
+                "elicitation": "Elicit.Slot.1179335379601.1094487610534"
+              },
+              "validations": [
+                {
+                  "type": "hasEntityResolutionMatch",
+                  "prompt": "Slot.Validation.149243085989.810526028475.1596864295296"
+                }
+              ]
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE",
+              "elicitationRequired": true,
+              "confirmationRequired": false,
+              "prompts": {
+                "elicitation": "Elicit.Slot.1036188007801.1590540431210"
+              }
+            },
+            {
+              "name": "time",
+              "type": "AMAZON.TIME",
+              "elicitationRequired": true,
+              "confirmationRequired": false,
+              "prompts": {
+                "elicitation": "Elicit.Slot.1036188007801.1577083521296"
+              }
+            },
+            {
+              "name": "title",
+              "type": "AMAZON.SearchQuery",
+              "elicitationRequired": true,
+              "confirmationRequired": false,
+              "prompts": {
+                "elicitation": "Elicit.Slot.1036188007801.876037276206"
+              }
+            }
+          ]
+        },
+        {
+          "name": "DeleteCalendarExamRecord",
+          "confirmationRequired": false,
+          "prompts": {},
+          "slots": [
+            {
+              "name": "title",
+              "type": "AMAZON.SearchQuery",
+              "elicitationRequired": true,
+              "confirmationRequired": false,
+              "prompts": {
+                "elicitation": "Elicit.Slot.691126015037.328759152133"
+              }
+            }
+          ]
+        },
+        {
+          "name": "CheckCalendarPeriod",
+          "confirmationRequired": false,
+          "prompts": {},
+          "slots": [
+            {
+              "name": "date",
+              "type": "AMAZON.DATE",
+              "elicitationRequired": false,
+              "confirmationRequired": false,
+              "prompts": {}
+            },
+            {
+              "name": "record_type",
+              "type": "recordType",
+              "elicitationRequired": false,
+              "confirmationRequired": false,
+              "prompts": {}
+            }
+          ]
+        }
+      ],
+      "delegationStrategy": "ALWAYS"
+    },
+    "prompts": [
+      {
+        "id": "Elicit.Slot.63651436113.222455223835",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "Entendido, indícame el título de tu {record_type}"
+          }
+        ]
+      },
+      {
+        "id": "Elicit.Slot.63651436113.1365441421513",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "¿Para qué fecha quieres que se añada?"
+          }
+        ]
+      },
+      {
+        "id": "Confirm.Intent.63651436113",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "Se añadirá  {record_type} de {title} para el {date} a las {time} . ¿Estás de acuerdo?"
+          }
+        ]
+      },
+      {
+        "id": "Elicit.Slot.997171438110.466115209849",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "¿A qué hora?"
+          }
+        ]
+      },
+      {
+        "id": "Elicit.Slot.697408146775.1227666334177",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "¿De qué es la entrega?"
+          }
+        ]
+      },
+      {
+        "id": "Elicit.Slot.697408146775.1226741696678",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "¿Cuándo será la entrega?"
+          }
+        ]
+      },
+      {
+        "id": "Elicit.Slot.697408146775.948242907719",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "¿A qué hora es la entrega?"
+          }
+        ]
+      },
+      {
+        "id": "Slot.Validation.628314443864.630285625625.838568737178",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "No se puede comprobar {record_type} en el calendario."
+          }
+        ]
+      },
+      {
+        "id": "Slot.Validation.328741516317.19317963944.1369979322306",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "No se puede añadir {record_type} al calendario."
+          }
+        ]
+      },
+      {
+        "id": "Slot.Validation.770018841847.187096483848.439084012482",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "No se puede añadir {record_type} al calendario."
+          }
+        ]
+      },
+      {
+        "id": "Slot.Validation.1036188007801.641570155427.677816426954",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "Lo siento, no he podido añadir \u0027{record_type} \u0027 al calendario. Inténtalo de nuevo con examen, tarea, práctica, entrega o trabajo."
+          },
+          {
+            "type": "PlainText",
+            "value": "No se puede añadir \u0027{record_type} \u0027 al calendario."
+          }
+        ]
+      },
+      {
+        "id": "Confirm.Intent.1036188007801",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "Voy a añadir {record_type} de {title} para el {date} a las {time} . ¿Te parece bien?"
+          },
+          {
+            "type": "PlainText",
+            "value": "Se añadirá  al calendario {record_type} de {title} para el {date} a las {time} . ¿Estás de acuerdo?"
+          }
+        ]
+      },
+      {
+        "id": "Elicit.Slot.1036188007801.876037276206",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "De acuerdo, ¿Cuál es el título de tu {record_type} ?"
+          },
+          {
+            "type": "PlainText",
+            "value": "¿Qué título te gustaría que tuviese tu {record_type} ?"
+          }
+        ]
+      },
+      {
+        "id": "Elicit.Slot.1036188007801.1590540431210",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "¿Para qué fecha quieres que se añada tu {record_type} ?"
+          }
+        ]
+      },
+      {
+        "id": "Elicit.Slot.1036188007801.1577083521296",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "¿A qué hora será?"
+          }
+        ]
+      },
+      {
+        "id": "Slot.Validation.1036188007801.443006195131.1292039303995",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "No he podido añadir {record_category}"
+          }
+        ]
+      },
+      {
+        "id": "Elicit.Slot.1179335379601.1094487610534",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "{record_type} no es un valor que se pueda comprobar en el calendario. ¿Qué has querido decir?"
+          }
+        ]
+      },
+      {
+        "id": "Slot.Validation.149243085989.810526028475.1596864295296",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "No se puede añadir {record_type} al calendario."
+          }
+        ]
+      },
+      {
+        "id": "Elicit.Slot.691126015037.328759152133",
+        "variations": [
+          {
+            "type": "PlainText",
+            "value": "Muy bien, ¿Cómo se llama el examen que quieres eliminar?"
+          }
+        ]
+      }
+    ]
+  },
+  "version": "99"
+}
