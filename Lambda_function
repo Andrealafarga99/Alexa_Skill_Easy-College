@@ -1,0 +1,677 @@
+# Skill para la organización de la vida académica de los estudiantes
+import logging
+import ask_sdk_core.utils as ask_utils
+import os
+import boto3
+import datetime
+import calendar
+import requests
+import copy
+
+from Levenshtein import ratio
+from ask_sdk_core.skill_builder import SkillBuilder
+from ask_sdk_core.dispatch_components import AbstractRequestHandler
+from ask_sdk_core.dispatch_components import AbstractExceptionHandler
+from ask_sdk_core.handler_input import HandlerInput
+from ask_sdk_core.skill_builder import CustomSkillBuilder
+from ask_sdk_dynamodb.adapter import DynamoDbAdapter
+#  librería Python para extraer datos desde sitios HTML
+from bs4 import BeautifulSoup
+
+from ask_sdk_model import Response
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Definición de la región de la base de datos, el nombre de la tabla y el adaptador de dynamodb
+ddb_region = os.environ.get('DYNAMODB_PERSISTENCE_REGION')
+ddb_table_name = os.environ.get('DYNAMODB_PERSISTENCE_TABLE_NAME')
+ddb_resource = boto3.resource('dynamodb', region_name=ddb_region)
+# Uasmos DynamoDbAdapter para crear la tabla
+dynamodb_adapter = DynamoDbAdapter(table_name=ddb_table_name, create_table=False, dynamodb_resource=ddb_resource)
+
+
+class LaunchRequestHandler(AbstractRequestHandler):
+
+    def can_handle(self, handler_input):
+
+        return ask_utils.is_request_type("LaunchRequest")(handler_input)
+
+    def handle(self, handler_input):
+        speak_output = '¡Hola! Soy Alexa, tu asistente virtual del grado en ingeniería de servicios. ¿En que puedo ayudarte?'
+        
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
+# Clase para insertar un nuevo examen 
+class InsertCalendarRecordHandler(AbstractRequestHandler):
+
+    def can_handle(self, handler_input):
+        return ask_utils.is_intent_name("InsertCalendarRecord")(handler_input)
+
+    def handle(self, handler_input):
+        persistent_attributes = handler_input.attributes_manager.persistent_attributes
+        date = handler_input.request_envelope.request.intent.slots['date'].value
+        title = handler_input.request_envelope.request.intent.slots['title'].value
+        time = handler_input.request_envelope.request.intent.slots['time'].value
+        
+        if 'calendar' not in persistent_attributes:
+            persistent_attributes['calendar'] = {}
+        if 'exams' not in persistent_attributes['calendar']:
+            persistent_attributes['calendar']['exams'] = []
+        if 'assignments' not in persistent_attributes['calendar']:
+            persistent_attributes['calendar']['assignments'] = []
+            
+        if handler_input.request_envelope.request.intent.slots['record_type'].resolutions.resolutions_per_authority[0].values[0].value.name == 'trabajo':
+            persistent_attributes['calendar']['assignments'].append({'date': date, 'title': title, 'time': time})
+        else:
+            persistent_attributes['calendar']['exams'].append({'date': date, 'title': title, 'time': time})
+        
+        handler_input.attributes_manager.save_persistent_attributes()
+
+        speak_output = 'Perfecto, se ha guardado tu {}. ¿En qué más te puedo ayudar?'.format(handler_input.request_envelope.request.intent.slots["record_type"].value)
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
+
+# Clase para obtener la fecha de un examen 
+class CheckCalendarExamHandler(AbstractRequestHandler):
+
+    def can_handle(self, handler_input):
+
+        return ask_utils.is_intent_name("CheckCalendarExam")(handler_input)
+
+    def handle(self, handler_input):
+        
+        persistent_attributes = handler_input.attributes_manager.persistent_attributes
+        title = handler_input.request_envelope.request.intent.slots['title'].value
+        max_coincidence = 0
+        max_index = -1
+        for exam in persistent_attributes['calendar']['exams']:
+            if ratio(exam['title'], title) > max_coincidence and ratio(exam['title'], title) > 0.5:
+                max_coincidence = ratio(exam['title'], title)
+                max_index = persistent_attributes['calendar']['exams'].index(exam)
+        
+        if max_coincidence > 0:
+            # Obtenemos el la fecha del examen para el valor title y además le decimos que solo nos devuelva el mes y el día gracias al split.
+            speak_output = "La fecha del examen de {} es el <say-as interpret-as='date' format='dm'>{}</say-as>. Qué más te gustaría saber?".format(persistent_attributes['calendar']['exams'][max_index]['title'], "-".join(persistent_attributes['calendar']['exams'][max_index]['date'].split('-')[1:][::-1]))
+        else:
+             # Si el título no existe nos devolverá un mensaje
+            speak_output = 'Lo siento, no he encontrado ningún examen con ese nombre. Por favor, proporciona el nombre de un examen ya guardado o crea uno nuevo.'
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
+
+# Clase para obtener la fecha de un trabajo
+class CheckCalendarAssignmentHandler(AbstractRequestHandler):
+
+    def can_handle(self, handler_input):
+
+        return ask_utils.is_intent_name("CheckCalendarAssignment")(handler_input)
+
+    def handle(self, handler_input):
+        
+        persistent_attributes = handler_input.attributes_manager.persistent_attributes
+        title = handler_input.request_envelope.request.intent.slots['title'].value
+        max_coincidence = 0
+        max_index = -1
+        for assignment in persistent_attributes['calendar']['assignments']:
+            if ratio(assignment['title'], title) > max_coincidence and ratio(assignment['title'], title) > 0.5:
+                max_coincidence = ratio(assignment['title'], title)
+                max_index = persistent_attributes['calendar']['assignments'].index(assignment)
+        
+        if max_coincidence > 0:
+            # Obtenemos el la fecha del examen para el valor title y además le decimos que solo nos devuelva el mes y el día gracias al split.
+            date_of_assignment = "-".join(persistent_attributes['calendar']['exams'][max_index]['date'].split('-')[1:][::-1])
+            speak_output = "La fecha del trabajo de {} es el <say-as interpret-as='date' format='dm'>{}</say-as>. Qué más te gustaría saber?".format(persistent_attributes['calendar']['assignments'][max_index]['title'], date_of_assignment)
+        else:
+             # Si el título no existe nos devolverá un mensaje
+            speak_output = 'Lo siento, no he encontrado ningún trabajo con ese nombre. Por favor, proporciona el nombre de un trabajo guardado o crea uno nuevo.'
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
+
+# Clase para conocer el próximo examen o trabajo
+class NextCalendarRecordHandler(AbstractRequestHandler):
+    def can_handle(self, handler_input):
+        
+        return ask_utils.is_intent_name("NextCalendarRecord")(handler_input)
+    
+    def handle(self,handler_input):
+        
+        persistent_attributes = handler_input.attributes_manager.persistent_attributes
+        
+        now_seconds =  datetime.datetime.timestamp(datetime.datetime.now())  # la fecha de hoy en segundos
+        difference = 1000000000000000000000000000
+        
+        if handler_input.request_envelope.request.intent.slots['record_type'].resolutions.resolutions_per_authority[0].values[0].value.name == 'trabajo':
+            
+            # se le asigna al índice un valor de -1 inicial como valor de control
+            index_next_assignment = -1
+            for assignment in persistent_attributes['calendar']['assignments']:
+                record_seconds = datetime.datetime.timestamp(datetime.datetime.strptime(assignment['date'] + ' ' + assignment['time'], '%Y-%m-%d %H:%M'))
+                if record_seconds - now_seconds > 0 and record_seconds - now_seconds < difference:
+                    difference = record_seconds - now_seconds
+                    index_next_assignment = persistent_attributes['calendar']['assignments'].index(assignment)
+                
+            if index_next_assignment == -1:
+                speak_output = 'No tienes ningún trabajo que entregar. ¿En qué más te puedo ayudar?'
+            else:
+                assignment = persistent_attributes['calendar']['assignments'][index_next_assignment]
+                speak_output = 'El próximo trabajo por entregar es "{}" para el <say-as interpret-as="date" format="dm">{}</say-as> a las {}.'.format(assignment['title'], "-".join(assignment['date'].split('-')[1:][::-1]), assignment['time'])
+        else:
+            
+            index_next_exam = -1
+            for exam in persistent_attributes['calendar']['exams']:
+                record_seconds = datetime.datetime.timestamp(datetime.datetime.strptime(exam['date'] + ' ' + exam['time'], '%Y-%m-%d %H:%M'))
+                if record_seconds - now_seconds > 0 and record_seconds - now_seconds < difference:
+                    difference = record_seconds - now_seconds
+                    index_next_exam = persistent_attributes['calendar']['exams'].index(exam)
+                    
+            # Si el ídice es -1 es decir que no se ha encontrado un índice que este dentro de exam y cuya fecha no se haya pasado
+            if index_next_exam == -1:
+                speak_output = '¡Estás de suerte, no te queda ningún examen por delante!. ¿En qué más te puedo ayudar?'
+            else:
+                exam = persistent_attributes['calendar']['exams'][index_next_exam]
+                speak_output = 'El próximo examen es "{}" el <say-as interpret-as="date" format="dm">{}</say-as> a las {}.'.format(exam['title'], "-".join(exam['date'].split('-')[1:][::-1]), exam['time'])
+
+        return(
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
+
+# Clase para borrar un examen o trabajo por el título
+class DeleteCalendarExamRecordHandler(AbstractRequestHandler):
+
+    def can_handle(self, handler_input):
+
+        return ask_utils.is_intent_name("DeleteCalendarExamRecord")(handler_input)
+
+    def handle(self, handler_input):
+        
+        persistent_attributes = handler_input.attributes_manager.persistent_attributes
+        title = handler_input.request_envelope.request.intent.slots['title'].value
+
+        deleted = False
+        for exam in persistent_attributes['calendar']['exams']:
+            if exam['title'] == title:
+                persistent_attributes['calendar']['exams'].remove(exam)
+                deleted = True
+        if deleted:
+            speak_output = "Perfecto, se ha borrado tu examen de {}. ¿En qué más te puedo ayudar?".format(title)
+        else:
+             # Si el título no existe nos devolverá un mensaje
+            speak_output = 'No he encontrado ningún examen con ese nombre.'
+                
+        handler_input.attributes_manager.save_persistent_attributes()
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
+
+# Clase para indicar entregas de trabajos la semana que viene, el próximo mes, el próximo año
+class CheckCalendarPeriodHandler(AbstractRequestHandler):
+
+    def can_handle(self, handler_input):
+
+        return ask_utils.is_intent_name("CheckCalendarPeriod")(handler_input)
+
+    def handle(self, handler_input):
+        
+        persistent_attributes = handler_input.attributes_manager.persistent_attributes
+        date = handler_input.request_envelope.request.intent.slots['date'].value
+        record_type = handler_input.request_envelope.request.intent.slots['record_type'].resolutions.resolutions_per_authority[0].values[0].value.name
+        record_type = 'exams' if record_type == 'examen' else 'assignments'
+        record_message = 'trabajos' if record_type =='assignments' else 'exámenes'
+        date_today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) # Nos devuelve la hhora con segundo, minutos, microsegundos que se sustituyen por 0 con el método replace
+        date_message = {
+            'year' : {
+                'past' : 'En el año {} tuviste los siguientes {}: {}',
+                'today' : 'Este año tienes los siguientes {}: {}',
+                'future' : 'En el año {} tendrás los siguientes {}: {}'
+            },
+            'month' : {
+                'past' : 'En <say-as interpret-as="date" format="ym">{}</say-as> tuviste los siguientes {}: {}',
+                'today' : 'Este mes tienes los {}: {}',
+                'future' : 'En <say-as interpret-as="date" format="ym">{}</say-as> tendrás los siguientes {}: {}',    
+            },
+            'week' : {
+              'past' : 'La semana del <say-as interpret-as="date" format="ymd">{}</say-as> tuviste los siguientes {}: {}',
+                'today' : 'Esta semana tienes los siguientes {}: {}',
+                'future' : 'La semana del <say-as interpret-as="date" format="ymd">{}</say-as> tendrás los siguientes {}: {}',    
+            }, 
+            'day' : {
+                'past' : 'El día <say-as interpret-as="date" format="d">{}</say-as> tuviste los siguientes {}: {}',
+                'today' : 'Hoy tienes los {}: siguientes {}',
+                'future' : 'El día <say-as interpret-as="date" format="d">{}</say-as> tendrás los siguientes {}: {}',     
+            },
+        }
+        
+        
+        
+        # Año
+        if '-' not in date:
+            list_records = [x['title'] for x in persistent_attributes['calendar'][record_type] if int(x['date'][0:4]) == int(date)] 
+            if len(list_records) > 0:
+                if date_today.year == int(date):
+                    speak_output = date_message['year']['today'].format(record_message, ", ".join(list_records))
+                
+                elif date_today.year > int(date):
+                    speak_output = date_message['year']['past'].format(date, record_message, ", ".join(list_records))
+                    
+                else: 
+                    speak_output = date_message['year']['future'].format(date, record_message, ", ".join(list_records))
+            else:
+                speak_output = 'No se han encontrado {} en el año indicado.'.format(record_message)
+
+        
+        # Mes o semana
+        elif len(date.split('-')) == 2:
+            
+            # Semana
+            if 'W' in date:
+                first_day_this_week = date_today - datetime.timedelta(days=datetime.datetime.today().weekday() % 7)
+                first_day_date_week = datetime.datetime.strptime(date + '-1', "%Y-W%W-%w")
+
+                list_records = [x['title'] for x in persistent_attributes['calendar'][record_type] if (datetime.datetime.strptime(x['date'], '%Y-%m-%d')  - datetime.timedelta(days=datetime.datetime.strptime(x['date'], '%Y-%m-%d').weekday() % 7)) == first_day_date_week]
+                
+                if len(list_records) > 0:
+                    if first_day_this_week == first_day_date_week: # Devuelve el primer día de la semana en formato datetime
+                    #Si el primer día de la semana de mi registro es igual al primer día de la semana que le estamos pasando
+                        speak_output = date_message['week']['today'].format(record_message, ", ".join(list_records))
+                            
+                    elif first_day_this_week > first_day_date_week:
+                        speak_output = date_message['week']['past'].format(first_day_date_week.strftime('%Y-%m-%d'), record_message, ", ".join(list_records))
+                        
+                    else: 
+                        speak_output = date_message['week']['future'].format(first_day_date_week.strftime('%Y-%m-%d'), record_message, ", ".join(list_records))
+                    
+                else:
+                    speak_output = 'No se han encontrado {} para la semana indicada.'.format(record_message)
+                
+            # Mes
+            if 'W' not in date:
+                list_records = [x['title'] for x in persistent_attributes['calendar'][record_type] if x['date'][0:7] == date]
+                if len(list_records) > 0:
+                        
+                    if date_today.strftime('%Y-%m') == date:
+                        speak_output = date_message['month']['today'].format(record_message, ", ".join(list_records))
+                        
+                    # La fecha puede ser o bien mismo año pero mes actual mayor al que nos pasan o el año ser menor al actual
+                    elif date_today.year  > int(date[0:4]) or (date_today.month > int(date[5:7]) and date_today.year == int(date[0:4])):
+                        speak_output = date_message['month']['past'].format(date, record_message, ", ".join(list_records))
+                    
+                    else: 
+                        speak_output = date_message['month']['future'].format(date, record_message, ", ".join(list_records))
+                else:
+                    speak_output = 'No se han encontrado {} para el mes indicado.'.format(record_message)
+
+               
+        # Día    
+        else:
+            list_records = [x['title'] for x in persistent_attributes['calendar'][record_type] if x['date'] == date]
+            if len(list_records) > 0:
+                if date_today == datetime.datetime.strptime(date, '%Y-%m-%d'):
+                    speak_output = date_message['day']['today'].format(record_message, ", ".join(list_records))
+                
+                elif date_today > datetime.datetime.strptime(date, '%Y-%m-%d'):
+                    speak_output = date_message['day']['past'].format(date, record_message, ", ".join(list_records))
+                    
+                else: 
+                    speak_output = date_message['day']['future'].format(date, record_message, ", ".join(list_records))
+                
+            else:
+                speak_output = 'No se han encontrado {} para el día indicado.'.format(record_message)
+
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
+
+# Clase que nos dice cuántos días faltan para el examen o trabajo que le indiquemos
+class DaysToRecordHandler(AbstractRequestHandler):
+
+    def can_handle(self, handler_input):
+
+        return ask_utils.is_intent_name("DaysToRecord")(handler_input)
+
+    def handle(self, handler_input):
+        
+        persistent_attributes = handler_input.attributes_manager.persistent_attributes
+        title = handler_input.request_envelope.request.intent.slots['title'].value
+        
+        # En esta variable guardamos el tipo: examen o trabajo. Este tipo lo buscamos en la posición 0 del title
+        record_type = title.split()[0]
+        # De esta forma le decimos que si en el slot title hay un de delante del título que buscamos que entonces lo coja todo de la posición 2 en adleante, sino que lo coja lo que haya en la posición 1
+        title = " ".join(title.split()[2:]) if title.split()[1] == 'de' else " ".join(title.split()[1:]) 
+        
+        speak_output = ''
+        if record_type == 'examen':
+            for exam in persistent_attributes['calendar']['exams']:
+                if exam['title'] == title and datetime.datetime.today() < datetime.datetime.strptime(exam['date'], '%Y-%m-%d'):
+                    days = (datetime.datetime.strptime(exam['date'], '%Y-%m-%d') - datetime.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)).days
+                    if days == 1:
+                        speak_output = 'Queda 1 día para el examen de {}.'.format(title)
+                    else:
+                        speak_output = 'Quedan {} días para el examen de {}.'.format(days, title)
+                    break
+                
+        else:
+            for assignment in persistent_attributes['calendar']['assignments']:
+                if assignment['title'] == title and datetime.datetime.today() < datetime.datetime.strptime(assignment['date'], '%Y-%m-%d'):
+                    days = (datetime.datetime.strptime(assignment['date'], '%Y-%m-%d') - datetime.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)).days
+                    if days == 1:
+                        speak_output = 'Queda 1 día para el trabajo de {}.'.format(title)
+                    else:
+                        speak_output = 'Quedan {} días para el trabajo de {}.'.format(days, title)
+                    break
+                
+        if speak_output == '':
+            if record_type == 'examen':
+                speak_output = 'No se ha encontrado ningún examen titulado {}.'.format(title)
+            else:
+                speak_output = 'No se ha encontrado ningún trabajo títulado {}.'.format(title)
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
+
+# Clase para saber el horario de un día de la semana 
+class SubjectsTimetabledHandler(AbstractRequestHandler):
+
+        
+    def can_handle(self, handler_input):
+        return ask_utils.is_intent_name("SubjectsTimetable")(handler_input)
+
+    def handle(self, handler_input):
+        
+        # Construimos el mensaje de la hora en formato 12h
+        def get_hour_message(time):
+            message = ''
+            hour = str(int(time.split(':')[0]))
+            min = time.split(':')[1]
+            time = 'am'
+            
+            if int(min) == 0:
+                min_message = ''
+            elif int(min) == 30:
+                min_message = ' y media'
+            else:
+                min_message = ' y ' + min
+                
+            if int(hour) > 12:
+                hour = str(int(hour) - 12)
+                time = 'pm'
+                
+            if hour == '0':
+                return 'a las doce {} de la mañana'.format(min_message)
+            
+            elif hour == '1':
+                return 'a la una {} {}'.format(min_message, ' de la mañana' if time == 'am' else ' de la tarde')
+                
+            else:
+                return 'a las {} {} {}'.format(hour, min_message, ' de la mañana' if time == 'am' else ' de la tarde')
+                
+        day_map = {
+            'monday' : 'lunes',
+            'tuesday' : 'martes',
+            'wednesday' : 'miércoles',
+            'thursday' : 'jueves',
+            'friday' : 'viernes',
+            'saturday' : 'sabado',
+            'sunday' : 'domingo'
+        }
+        
+        day_of_week = handler_input.request_envelope.request.intent.slots['dayOfWeek'].value
+        date = handler_input.request_envelope.request.intent.slots['date'].value
+        persistent_attributes = handler_input.attributes_manager.persistent_attributes
+
+        if handler_input.request_envelope.request.intent.slots['date'].value is not None:   
+
+            date_to_weekday = datetime.datetime.strptime(date, '%Y-%m-%d').weekday()
+            day_of_week = calendar.day_name[date_to_weekday]
+            
+        else:
+            
+            day_of_week = {v: k for k, v in day_map.items()}[day_of_week]
+            
+        day_of_week = day_of_week.lower()
+        
+        if day_of_week in persistent_attributes['timetable'].keys() and len(persistent_attributes['timetable'][day_of_week].keys()) > 0:
+            speak_output = 'El {} tienes '.format(day_map[day_of_week])
+            
+            for key in sorted(persistent_attributes['timetable'][day_of_week]):
+                speak_output += persistent_attributes['timetable'][day_of_week][key] + ' {}, '.format(get_hour_message(key))
+            
+            speak_output = speak_output[:-2]   
+        else:
+            speak_output = "El {} no hay clase.".format(day_map[day_of_week])
+            
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+            )
+
+class GetContactInfoFromWebsiteHandler(AbstractRequestHandler):
+    """Handler for Help Intent."""
+    def can_handle(self, handler_input):
+        return ask_utils.is_intent_name("GetContactInfoFromWebsite")(handler_input)
+
+    
+
+    def handle(self, handler_input):
+        r = requests.get('https://gestion2.urjc.es/listadoprofesorado/profesores-asignaturas/grado-en-ciencia-gestion-e-ingenieria-de-servicios')
+        soup = BeautifulSoup(r.text.lower(), 'html')
+        
+        list_tr = sum([x.find_all('tr')[1:] for x in soup.find_all('div', class_='table-responsive')[1:5]], [])
+        
+        if handler_input.request_envelope.request.intent.slots['name'].value is not None:
+
+            name = handler_input.request_envelope.request.intent.slots['name'].value
+            max_coincidence = 0.5
+            max_index = -1
+
+            # Por cada asignatura en la tabla:
+            for tr in list_tr:
+                if ratio(tr.select('a')[1].text.replace('  ', ' '), name) > max_coincidence:
+                    max_index = list_tr.index(tr)
+                    max_coincidence = ratio(list_tr[max_index].select('a')[1].text.replace('  ', ' '), name)
+                
+            if max_index > 0.5:
+                r_teacher = requests.get(list_tr[max_index].select('a')[1]['href'])
+                soup_teacher = BeautifulSoup(r_teacher.text, 'html')
+
+                
+                speak_output = "El profesor {} imparte la asignatura {}, y le puedes contactar a través de su correo: {}".format(list_tr[max_index].select('a')[1].text.replace('  ', ' '), list_tr[max_index].td.text, soup_teacher.select("a[href*=mailto]")[0].text)
+            else:
+                speak_output = "No se ha encontrado al profesor {}".format(name)
+        else:
+            
+            teachers = {}
+            
+            subject = handler_input.request_envelope.request.intent.slots['subject'].value
+
+             # Por cada asignatura en la tabla:
+            for tr in list_tr:
+                if ratio(tr.td.text, subject) > 0.5:
+                    teachers[tr.select('a')[1].text.replace('  ', ' ').replace(' ', '_')] = {'subject': tr.td.text, 'ratio': ratio(tr.td.text, subject)}
+            
+            if len(teachers.keys()) > 0:
+                
+                match_teachers = [teacher for teacher in teachers.keys() if teachers[teacher]['ratio'] == max([x['ratio'] for x in teachers.values()])]
+                
+                if len(match_teachers) == 1:
+                    speak_output = "La asignatura {} la imparte {}".format(teachers[match_teachers[0]]['subject'], match_teachers[0].replace('_', ' '))
+
+                else:
+                    speak_output = "La asignatura {} la imparten los profesores {}".format(teachers[match_teachers[0]]['subject'], " ,".join([teacher.replace('_', ' ') for teacher in match_teachers]))
+            else:
+                speak_output = "No se ha encontrado la asignatura {}".format(subject)
+                
+        
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
+
+
+class HelpIntentHandler(AbstractRequestHandler):
+    """Handler for Help Intent."""
+    def can_handle(self, handler_input):
+        return ask_utils.is_intent_name("AMAZON.HelpIntent")(handler_input)
+
+    def handle(self, handler_input):
+        speak_output = "You can say hello to me! How can I help?"
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
+
+
+class CancelOrStopIntentHandler(AbstractRequestHandler):
+    """Single handler for Cancel and Stop Intent."""
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return (ask_utils.is_intent_name("AMAZON.CancelIntent")(handler_input) or
+                ask_utils.is_intent_name("AMAZON.StopIntent")(handler_input))
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+        speak_output = "Goodbye!"
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .response
+        )
+
+class FallbackIntentHandler(AbstractRequestHandler):
+    """Single handler for Fallback Intent."""
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return ask_utils.is_intent_name("AMAZON.FallbackIntent")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+        logger.info("In FallbackIntentHandler")
+        speech = "Hmm, I'm not sure. You can say Hello or Help. What would you like to do?"
+        reprompt = "I didn't catch that. What can I help you with?"
+
+        return handler_input.response_builder.speak(speech).ask(reprompt).response
+
+class SessionEndedRequestHandler(AbstractRequestHandler):
+    """Handler for Session End."""
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return ask_utils.is_request_type("SessionEndedRequest")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+
+        # Any cleanup logic goes here.
+
+        return handler_input.response_builder.response
+
+class IntentReflectorHandler(AbstractRequestHandler):
+    """The intent reflector is used for interaction model testing and debugging.
+    It will simply repeat the intent the user said. You can create custom handlers
+    for your intents by defining them above, then also adding them to the request
+    handler chain below.
+    """
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return ask_utils.is_request_type("IntentRequest")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+        intent_name = ask_utils.get_intent_name(handler_input)
+        speak_output = "You just triggered " + intent_name + "."
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                # .ask("add a reprompt if you want to keep the session open for the user to respond")
+                .response
+        )
+
+class CatchAllExceptionHandler(AbstractExceptionHandler):
+    """Generic error handling to capture any syntax or routing errors. If you receive an error
+    stating the request handler chain is not found, you have not implemented a handler for
+    the intent being invoked or included it in the skill builder below.
+    """
+    def can_handle(self, handler_input, exception):
+        # type: (HandlerInput, Exception) -> bool
+        return True
+
+    def handle(self, handler_input, exception):
+        # type: (HandlerInput, Exception) -> Response
+        logger.error(exception, exc_info=True)
+
+        speak_output = "Lo siento, no te he entendido. Por favor, inténtalo de nuevo."
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
+
+# The SkillBuilder object acts as the entry point for your skill, routing all request and response
+# payloads to the handlers above. Make sure any new handlers or interceptors you've
+# defined are included below. The order matters - they're processed top to bottom.
+
+
+sb = CustomSkillBuilder(persistence_adapter = dynamodb_adapter)
+
+sb.add_request_handler(LaunchRequestHandler())
+sb.add_request_handler(InsertCalendarRecordHandler())
+sb.add_request_handler(CheckCalendarExamHandler())
+sb.add_request_handler(NextCalendarRecordHandler())
+sb.add_request_handler(CheckCalendarAssignmentHandler())
+sb.add_request_handler(DeleteCalendarExamRecordHandler())
+sb.add_request_handler(CheckCalendarPeriodHandler())
+sb.add_request_handler(DaysToRecordHandler())
+sb.add_request_handler(SubjectsTimetabledHandler())
+sb.add_request_handler(GetContactInfoFromWebsiteHandler())
+sb.add_request_handler(HelpIntentHandler())
+sb.add_request_handler(CancelOrStopIntentHandler())
+sb.add_request_handler(FallbackIntentHandler())
+sb.add_request_handler(SessionEndedRequestHandler())
+sb.add_request_handler(IntentReflectorHandler()) # make sure IntentReflectorHandler is last so it doesn't override your custom intent handlers
+
+sb.add_exception_handler(CatchAllExceptionHandler())
+
+lambda_handler = sb.lambda_handler()
